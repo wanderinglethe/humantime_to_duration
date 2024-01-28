@@ -48,7 +48,7 @@ pub enum Item {
     Time(time::Time),
     Weekday(weekday::Weekday),
     Relative(relative::Relative),
-    TimeZone(()),
+    TimeZone(time_zone::TimeZone),
 }
 
 fn offset(input: &mut &str) -> PResult<i32> {

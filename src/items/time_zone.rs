@@ -13,9 +13,47 @@
 //! > in the date, and any quotes or backslashes within rule must be escaped by
 //! > a backslash.
 //!
+//! Does not support POSIX rules with custom timezones
 
-use winnow::PResult;
+use winnow::{Parser, PResult};
+use winnow::ascii::escaped_transform;
+use winnow::combinator::{alt, delimited};
+use winnow::token::take_till;
 
-pub fn parse(_input: &mut &str) -> PResult<()> {
-    todo!()
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
+pub struct TimeZone(String);
+
+pub fn parse(input: &mut &str) -> PResult<TimeZone> {
+    delimited(
+        "TZ=\"",
+        escaped_transform(
+            take_till(1.., ['\\', '"']),
+            '\\',
+            alt(("\\".value("\\"), "\"".value("\""))),
+        ),
+        "\"",
+    )
+    .map(TimeZone)
+    .parse_next(input)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{parse, TimeZone};
+
+    #[test]
+    fn all() {
+        for (s, tz) in [
+            (r#"TZ="Europe/Amsterdam""#, "Europe/Amsterdam"),
+            (r#"TZ="Americas/New_York""#, "Americas/New_York"),
+            (r#"TZ="Some \"rule\" this is""#, "Some \"rule\" this is"),
+        ] {
+            let mut t = s;
+            assert_eq!(
+                parse(&mut t),
+                Ok(TimeZone(tz.to_string())),
+                "Failed string: {s}"
+            )
+        }
+    }
 }
